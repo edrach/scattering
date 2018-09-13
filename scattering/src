@@ -1,0 +1,171 @@
+def run(grid_name,k,rho_eta,l=0,epsilon=1.E-5,do_plot=False,output_dir='./'):
+    '''Run experiment for a specific value of k and a particular grid
+
+    Returns the number of grid cells and the GMRES iterations
+    required to solve to tolerance epsilon
+
+    :arg grid_name: name of grid (can be 'sphere', 'ellipsoid','cube','trap_sphere'or 'trap_cube')
+    :arg k: wave number k
+    :arg rho_eta: Factor eta, eta = rho_eta*k
+    :arg epsilon: Solver tolerance epsilon
+    :arg do_plot: Reconstruct wave field and generate plot?
+    '''
+
+    def combined_data(x, n, domain_index, result):
+        '''Boundary data'''
+        result[0] = 1j * k * np.exp(1j * k * x[0]) * (n[0]-rho_eta)
+    h = grid_spacing(k)
+    if (grid_name == 'sphere'):
+        grid = bempp.api.shapes.sphere(r=1.0,h=h)
+    if (grid_name == 'ellipsoid'):
+        grid = bempp.api.shapes.ellipsoid(r1=ellipsoid_r[0],
+                                          r2=ellipsoid_r[1],
+                                          r3=ellipsoid_r[2],
+                                          h=h)
+    if (grid_name == 'cube'):
+       grid = bempp.api.shapes.cube(length=1,origin=(0,0,0),h=h)
+    if (grid_name == 'trap_cube'):
+       temp1 =  bempp.api.shapes.cube(length=1,origin=(l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube(length=1,origin=(-1-l/2,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2])
+    if (grid_name == 'trap_sphere'):
+       temp1 =  bempp.api.shapes.sphere(r=1,origin=(1+l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.sphere(r=1,origin=(-1-l/2,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2])
+    if (grid_name == 'untrapping_cubes'):
+       temp1 =  bempp.api.shapes.cube(length=1,origin=(l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube(length=1,origin=(-1-l/2,0,0),h=h)
+       temp3 =  bempp.api.shapes.sphere(r=1,origin=(0,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2,temp3])
+    if (grid_name == 'untrapping_cubes_triangle'):
+       temp1 =  bempp.api.shapes.cube(length=1,origin=(l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube(length=1,origin=(-1-l/2,0,0),h=h)
+       temp3 = bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2,temp3])
+    if (grid_name == 'cubes_triangle'):
+       temp1 =  bempp.api.shapes.cube(length=1,origin=(l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube(length=1,origin=(-1-l/2,0,0),h=h)
+       temp3 = bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,-1,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2,temp3])
+    if (grid_name == 'cube_triangle'):
+       temp1 =  bempp.api.shapes.cube(length=1,origin=(l/2,0,0),h=h)
+       temp2 = bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,-1,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2])
+    if (grid_name == 'cube_triangle_aligned'):
+       temp1 =  bempp.api.shapes.cube(length=1,origin=(l/2,0,0),h=h)
+       temp2 = bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2])
+    if (grid_name == 'unaligned_cubes_triangle'):
+       temp1 = bempp.api.shapes.cube(length=1,origin=(-1-l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube(length=1,origin=(l/2,-1,0),h=h)
+       temp3 =  bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2,temp3])
+    if (grid_name == 'half_aligned_cubes_triangle'):
+       temp1 = bempp.api.shapes.cube(length=1,origin=(-1-l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube(length=1,origin=(l/2,-1/2,0),h=h)
+       temp3 =  bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2,temp3])
+    if (grid_name == 'cubes_shifted_triangle'):
+       temp1 = bempp.api.shapes.cube(length=1,origin=(-l-l/2,0,0),h=h)
+       temp2 =  bempp.api.shapes.cube_shifted(length=1,origin=(l/2,0,0),h=h)
+       temp3 =  bempp.api.shapes.cube_rotated(length=1.4142135623730951,origin=(-1,0,0),h=h)
+       grid =   bempp.api.shapes.union([temp1,temp2,temp3])
+
+    # Construct function spaces and operators
+    piecewise_const_space = bempp.api.function_space(grid, "DP", 0)
+    identity = bempp.api.operators.boundary.sparse.identity(
+        piecewise_const_space, piecewise_const_space, piecewise_const_space)
+    adlp = bempp.api.operators.boundary.helmholtz.adjoint_double_layer(
+    piecewise_const_space, piecewise_const_space, piecewise_const_space,k)
+    slp = bempp.api.operators.boundary.helmholtz.single_layer(
+        piecewise_const_space, piecewise_const_space, piecewise_const_space,k)
+    # Construct operator for LHS
+    lhs = .5*identity + adlp - 1j * rho_eta * k * slp
+
+    # Construct grid function
+    grid_fun = bempp.api.GridFunction(piecewise_const_space, fun=combined_data)
+
+    global it_count
+    it_count = 0
+    neumann_fun,info,tempt = gmres(lhs, grid_fun, tol=epsilon, return_iteration_count=True)#,
+    #                          callback=iteration_counter)
+    it_count+=tempt
+    # Create plot, if required
+    if (do_plot):
+        reconstruct_and_plot(grid_name,k,neumann_fun,output_dir)
+
+    n_cells = grid.leaf_view.entity_count(0)
+    return n_cells, it_count
+
+#####################################################################
+# M A I N
+######################################################################
+if (__name__=='__main__'):
+    # Parse command line arguments
+    parser = argparse.ArgumentParser(description='Run for different wave numbers.')
+    parser.add_argument("--grid", type=str,default='sphere',
+                        help="Grid type",choices=['sphere', 'ellipsoid','cube','trap_sphere','trap_cube','untrapping$
+    parser.add_argument("--kmin", type=float, required=True,
+                        help="Minimal wave number")
+    parser.add_argument("--kmax", type=float, required=True,
+                        help="Maximal wave number")
+    parser.add_argument("--epsilon", type=float, default=1.E-5,
+                        help="Solver tolerance")
+    parser.add_argument("--rhoeta", type=float,choices=[1.0,-1.0],
+                        default=1.0,
+                        help="Scaling paramater, eta = rhoeta*k")
+    parser.add_argument("--plot",
+                        action="store_true",
+                        help="Reconstruct and plot wave field")
+    parser.add_argument("--outputdir", type=str,default='./',
+                        help="Output directory")
+    parser.add_argument("--length_trap", type=float,
+                        default=0,
+                        help="Distance between the objects, length of the trap")
+
+    args = parser.parse_args(sys.argv[1:])
+    grid_name = args.grid
+    k_min = args.kmin
+    k_max = args.kmax
+    rho_eta = args.rhoeta
+    epsilon = args.epsilon
+    length_trap= args.length_trap
+    ######## added outpuditdir#######
+    outputdir = args.outputdir
+    if args.plot:
+        do_plot = True
+    else:
+        do_plot = False
+    print( datetime.datetime.now())
+    print()
+    print('*** parameters ***')
+    print()
+    print('grid = ',grid_name)
+    print('rho_eta = ',rho_eta)
+    print('tolerance epsilon = ',('%8.4e' % epsilon))
+    print( 'k_min = ',k_min)
+    print( 'k_max = ',k_max)
+    if length_trap!=0:
+       print( 'length_trap =',length_trap )
+    print( 'Reconstruct and plot wave field?',do_plot)
+    print()
+    sys.stdout.flush()
+    print( '*** results ***')
+    print()
+    # Loop over all wavenumbers k
+    print( '      wavenumber    number of cells      niter        time[s]')
+    t_total = 0.0
+    k = k_min
+    l=length_trap
+    while (k<=k_max):
+        t_start = time.time()
+        ncells, niter = run(grid_name,k,rho_eta,l,epsilon=epsilon,do_plot=False,
+                              output_dir=args.outputdir)
+        t_finish = time.time()
+        print( '   ',('%12d' % k),' ',('%16d' % ncells),'   ',('%6d' % niter),' ',('%12.2f' % (t_finish-t_start)))
+        t_total += (t_finish-t_start)
+        k += 0.5
+        sys.stdout.flush()
+    print()
+    print( 'total elapsed time [s]: ',('%12.2f' % t_total))
+
