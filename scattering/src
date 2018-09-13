@@ -104,7 +104,8 @@ if (__name__=='__main__'):
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Run for different wave numbers.')
     parser.add_argument("--grid", type=str,default='sphere',
-                        help="Grid type",choices=['sphere', 'ellipsoid','cube','trap_sphere','trap_cube','untrapping$
+                        help="Grid type",choices=['sphere', 'ellipsoid','cube','trap_sphere','trap_cube','untrapping_cubes', 'untrapping_cubes_triangle','cubes_triangle', 'cube_triangle','cube_triangle_aligned','unaligned_cubes_triangle','half_aligned_cubes_triangle','cubes_shifted_triangle'])
+
     parser.add_argument("--kmin", type=float, required=True,
                         help="Minimal wave number")
     parser.add_argument("--kmax", type=float, required=True,
