@@ -1,0 +1,61 @@
+#!/bin/bash
+
+# set the account to be used for the job
+#SBATCH --account=free
+
+# set name of job
+#SBATCH --job-name=scattering
+
+# set the number of nodes and partition
+#SBATCH --nodes=1
+#SBATCH --ntasks-per-node=16
+#SBATCH --partition=batch-128gb
+##SBATCH --partition=batch-devel
+##SBATCH --qos=devel
+
+
+# set max wallclock time
+#SBATCH --time=06:00:00
+
+module purge
+module load git/2.5.1
+module load cmake/3.5.2
+module load untested
+module load gcc/5.2.0
+module load netcdf
+module load slurm
+module load mvapich2/gcc
+module load blas/gcc
+module load lapack/gcc
+module load boost/gcc
+module load openblas
+module load anaconda
+source ~/source-bempp
+
+# run the application
+SCRIPT=/home/n/ed579/scattering/src/scattering.py
+RHOETA=1.0
+SHAPE=cubes_shifted_triangle
+KMIN=41
+KMAX=45
+LENGTH_TRAP=3.1415926535897932
+PLOT= #"--plot"
+echo "========================="
+echo "Starting run at `date`"
+echo "========================="
+echo
+echo "*** Parameters ***"
+echo " RHOETA = ${RHOETA}"
+echo " SHAPE = ${SHAPE}"
+echo " KMIN = ${KMIN}"
+echo " KMAX = ${KMAX}"
+echo " LENGTH_TRAP= ${LENGTH_TRAP}"
+echo " PLOT = ${PLOT}"
+echo " DIRECTORY=${DIRECTORY}"
+echo
+
+time python ${SCRIPT} --kmin=${KMIN} --kmax=${KMAX} ${PLOT} --grid=${SHAPE} --rhoeta=${RHOETA} --length_trap=${LENGTH_TRAP} --outputdir=${OUTPUTDIR} > output_${SHAPE}_${KMIN}.txt
+echo "========================="
+echo "Finishing run at `date`"
+echo "========================="
+
