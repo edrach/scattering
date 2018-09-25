@@ -1,0 +1,60 @@
+=========================
+Starting run at Tue Jul 10 16:24:50 BST 2018
+=========================
+
+*** Parameters ***
+ RHOETA = 1.0
+ SHAPE = cube
+ KMIN = 4
+ KMAX = 128
+ PLOT =
+ DIRECTORY=
+
+
+real	143m41.472s
+user	442m14.358s
+sys	3m1.892s
+=========================
+Finishing run at Tue Jul 10 18:48:31 BST 2018
+=========================
+
+########################################################################
+----------------------! Balena Job Details !----------------------------
+
+JobID          : 1564576
+No. of nodes   : 1
+No. of CPUs    : 16
+Timelimit      : 03:00:00
+Elapsed time   : 02:23:45
+Nodelist       : node-sw-011
+
+########################################################################
+
+
+--------------------------------------------------------------------------
+A process has executed an operation involving a call to the
+"fork()" system call to create a child process.  Open MPI is currently
+operating in a condition that could result in memory corruption or
+other system errors; your job may hang, crash, or produce silent
+data corruption.  The use of fork() (or system() or other calls that
+create child processes) is strongly discouraged.
+
+The process that invoked fork was:
+
+  Local host:          [[52102,27222],0] (PID 60852)
+
+If you are *absolutely sure* that your application will successfully
+and correctly survive a call to fork(), you may disable this warning
+by setting the mpi_warn_on_fork MCA parameter to 0.
+--------------------------------------------------------------------------
+*** results ***
+
+      wavenumber    number of cells      niter        time[s]
+               4                712         14           3.60
+               8               2456         18           2.90
+              16               9474         20          13.05
+              32              36338         22          75.19
+              64             144728         24         794.42
+             128             578322         35        7724.82
+
+total elapsed time [s]:       8613.97
